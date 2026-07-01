@@ -2,21 +2,21 @@
   "name": "Splitsia",
   "short_name": "Splitsia",
   "description": "Scan receipts and split bills with friends",
-  "start_url": "/splitsia/",
-  "scope": "/splitsia/",
+  "start_url": "/SplitSia/",
+  "scope": "/SplitSia/",
   "display": "standalone",
   "orientation": "portrait",
   "theme_color": "#6C63FF",
   "background_color": "#F4F3FF",
   "icons": [
     {
-      "src": "/splitsia/icon-192.png",
+      "src": "/SplitSia/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/splitsia/icon-512.png",
+      "src": "/SplitSia/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
