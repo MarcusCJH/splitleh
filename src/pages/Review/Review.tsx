@@ -101,13 +101,15 @@ export default function Review() {
       <TotalSummary receipt={receipt} />
 
       {/* ── CTA ────────────────────────────────────────────────────── */}
-      <button
-        className="btn btn-primary btn-full"
-        disabled={receipt.items.length === 0}
-        onClick={() => navigate('/split')}
-      >
-        Continue to Split &rarr;
-      </button>
+      <div className={styles.stickyCta}>
+        <button
+          className="btn btn-primary btn-full"
+          disabled={receipt.items.length === 0}
+          onClick={() => navigate('/split')}
+        >
+          Continue to Split &rarr;
+        </button>
+      </div>
 
     </div>
   )

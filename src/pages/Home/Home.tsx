@@ -52,6 +52,7 @@ export default function Home() {
         <div className={styles.stepGrid}>
           {STEPS.map((step, i) => (
             <div key={i} className={`${styles.stepCard} card`}>
+              <span className={styles.stepNum}>{step.num}</span>
               <span className={styles.stepEmoji}>{step.emoji}</span>
               <span className={styles.stepLabel}>{step.label}</span>
             </div>
@@ -72,8 +73,7 @@ export default function Home() {
                     <span className={styles.sessionTitle}>{s.title}</span>
                     <span className={styles.sessionMeta}>
                       {s.people.length} {s.people.length === 1 ? 'person' : 'people'} ·{' '}
-                      {s.receipt.items.length} items ·{' '}
-                      {formatCurrency(s.receipt.subtotal + chargesTotal, s.receipt.currency)}
+                      {s.receipt.items.length} items
                     </span>
                     <span className={styles.sessionDate}>
                       {new Date(s.createdAt).toLocaleDateString('en-SG', {
@@ -81,13 +81,18 @@ export default function Home() {
                       })}
                     </span>
                   </div>
-                  <button
-                    className="btn btn-ghost"
-                    onClick={(e) => handleDelete(s.id, e)}
-                    aria-label="Delete session"
-                  >
-                    <TrashIcon />
-                  </button>
+                  <div className={styles.sessionRight}>
+                    <span className={styles.sessionTotal}>
+                      {formatCurrency(s.receipt.subtotal + chargesTotal, s.receipt.currency)}
+                    </span>
+                    <button
+                      className="btn btn-ghost"
+                      onClick={(e) => handleDelete(s.id, e)}
+                      aria-label="Delete session"
+                    >
+                      <TrashIcon />
+                    </button>
+                  </div>
                 </li>
               )
             })}
@@ -99,10 +104,10 @@ export default function Home() {
 }
 
 const STEPS = [
-  { emoji: '📷', label: 'Scan receipt' },
-  { emoji: '✏️', label: 'Edit items'   },
-  { emoji: '👥', label: 'Add people'  },
-  { emoji: '💸', label: 'See who owes' },
+  { num: 1, emoji: '📷', label: 'Scan' },
+  { num: 2, emoji: '✏️', label: 'Review' },
+  { num: 3, emoji: '👥', label: 'Split' },
+  { num: 4, emoji: '💸', label: 'Results' },
 ]
 
 function PlusIcon() {

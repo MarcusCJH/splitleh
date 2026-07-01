@@ -42,6 +42,7 @@ export type Action =
   | { type: 'LOAD_DRAFT';       payload: SplitSession }
   | { type: 'SET_RECEIPT_META'; payload: Partial<Pick<Receipt, 'merchant' | 'date' | 'rawImageDataUrl' | 'rawText' | 'currency'>> }
   | { type: 'SET_ITEMS';        payload: ReceiptItem[] }
+  | { type: 'APPLY_SCAN_RESULT'; payload: { items: ReceiptItem[]; charges: Charge[]; merchant?: string } }
   | { type: 'ADD_ITEM';         payload: ReceiptItem }
   | { type: 'UPDATE_ITEM';      payload: ReceiptItem }
   | { type: 'DELETE_ITEM';      payload: string }
@@ -63,6 +64,31 @@ function withUpdated(session: SplitSession, changes: Partial<SplitSession>): Sta
 
 function withReceipt(session: SplitSession, receipt: Receipt): State {
   return withUpdated(session, { receipt: recalcReceiptTotals(receipt) })
+}
+
+/** Apply OCR-detected charge amounts onto the default svc/gst rows; add discount/rounding. */
+function mergeScanCharges(existing: Charge[], fromScan: Charge[]): Charge[] {
+  const result = existing.map((c) => ({ ...c }))
+
+  for (const scan of fromScan) {
+    if (scan.type === 'service_charge' || scan.type === 'gst') {
+      const idx = result.findIndex((c) => c.type === scan.type)
+      if (idx >= 0) {
+        result[idx] = { ...result[idx], label: scan.label, amount: scan.amount, rate: scan.rate }
+      } else {
+        result.push(scan)
+      }
+      continue
+    }
+
+    if (scan.amount === 0) continue
+
+    const idx = result.findIndex((c) => c.id === scan.id)
+    if (idx >= 0) result[idx] = scan
+    else result.push(scan)
+  }
+
+  return result
 }
 
 function reducer(state: State, action: Action): State {
@@ -99,6 +125,18 @@ function reducer(state: State, action: Action): State {
     case 'SET_ITEMS':
       if (!s) return state
       return withReceipt(s, { ...s.receipt, items: action.payload })
+
+    case 'APPLY_SCAN_RESULT': {
+      if (!s) return state
+      const { items, charges, merchant } = action.payload
+      const merged = mergeScanCharges(s.receipt.charges, charges)
+      return withReceipt(s, {
+        ...s.receipt,
+        items,
+        charges: merged,
+        merchant: merchant ?? s.receipt.merchant,
+      })
+    }
 
     case 'ADD_ITEM':
       if (!s) return state

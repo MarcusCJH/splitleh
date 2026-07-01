@@ -217,7 +217,7 @@ function PersonCard({
   return (
     <div
       className={`${styles.personCard} card animate-in`}
-      style={{ animationDelay: `${index * 60}ms` }}
+      style={{ animationDelay: `${index * 60}ms`, '--person-color': person.color } as React.CSSProperties}
     >
       {/* Header */}
       <div className={styles.personHeader}>

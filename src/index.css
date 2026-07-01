@@ -20,10 +20,13 @@
   --shadow-sm: 0 1px 3px rgba(108,99,255,.08);
   --shadow-md: 0 4px 16px rgba(108,99,255,.12);
   --shadow-lg: 0 8px 32px rgba(108,99,255,.16);
+  --shadow-primary: 0 4px 14px rgba(108,99,255,.35);
 
   --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   --nav-height: 68px;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --transition-base: 0.18s ease;
+  --color-warning: #F7971E;
 }
 
 /* ── Reset ──────────────────────────────────────────────────────────── */
@@ -104,11 +107,11 @@ img { max-width: 100%; display: block; }
 .btn:active { transform: scale(0.97); }
 
 .btn-primary {
-  background: var(--color-primary);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
   color: #fff;
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-primary);
 }
-.btn-primary:hover { box-shadow: var(--shadow-lg); }
+.btn-primary:hover { box-shadow: 0 6px 20px rgba(108,99,255,.45); }
 
 .btn-secondary {
   background: var(--color-primary-light);
@@ -138,6 +141,20 @@ img { max-width: 100%; display: block; }
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
   border: 1px solid var(--color-border);
+}
+
+.card-interactive {
+  cursor: pointer;
+  transition: box-shadow var(--transition-base), transform var(--transition-base);
+  -webkit-tap-highlight-color: transparent;
+}
+.card-interactive:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+.card-interactive:active {
+  transform: scale(0.98);
+  box-shadow: var(--shadow-sm);
 }
 
 .badge {
@@ -176,4 +193,9 @@ img { max-width: 100%; display: block; }
 }
 .animate-in {
   animation: fadeSlideIn 0.22s ease-out both;
+}
+
+@keyframes iconPulse {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.1); }
 }

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { parseReceipt, parseReceiptText } from '../parseReceipt'
+import { parseReceipt } from '../parseReceipt'
+import { reconcileReceipt } from '../receiptReconcile'
 
 // ── Fake receipt strings ──────────────────────────────────────────────────────
 
@@ -375,12 +376,64 @@ Thank you
       expect(moscato?.totalPrice).toBe(22.00)
     })
 
-    it('strips bare leading quantity "1 Foo" from items', () => {
+    it('strips bare leading quantity "2 Foo" from items', () => {
       const { items } = parseReceipt(POS_RECEIPT)
       const juice = items.find((it) => it.name.toLowerCase().includes('apple juice'))
       expect(juice).toBeDefined()
       expect(juice?.quantity).toBe(1)
       expect(juice?.totalPrice).toBe(5.00)
+    })
+
+    it('parses qty + item code + name ("2 6657 Honey")', () => {
+      const { items } = parseReceipt('2 6657 Honey Butterfly  9.80')
+      expect(items).toHaveLength(1)
+      expect(items[0]).toMatchObject({
+        name: 'Honey Butterfly',
+        quantity: 2,
+        totalPrice: 9.80,
+        unitPrice: 4.90,
+      })
+    })
+  })
+
+  // ── Real OCR output (samples/sample2.jpg, sample3.jpg) ─────────────────────
+
+  describe('real OCR output fixtures', () => {
+    it('parses Tsuta receipt: SUBTTL charge, spaced decimal, SLICE BEEF PHO', () => {
+      const rawOcr = `
+3      SLICE BEEF PHO                    44 40
+SUBTTL                             226.50
+%DISC 10.00% (STAFF _DISC) STAFF      -22.65
+SERVICE CHARGE 10%                   20.39
+TOTAL          244.42
+KRISPLUS                             244.42
+`.trim()
+      const { items, charges } = parseReceipt(rawOcr)
+      const pho = items.find((it) => it.name.toLowerCase().includes('slice beef pho'))
+      expect(pho).toMatchObject({ quantity: 3, totalPrice: 44.40 })
+      expect(charges.find((c) => c.type === 'subtotal')?.amount).toBeCloseTo(226.50)
+      expect(charges.find((c) => c.type === 'discount')?.amount).toBeCloseTo(-22.65)
+      expect(charges.find((c) => c.type === 'total')?.amount).toBeCloseTo(244.42)
+      expect(items.some((it) => it.name.toLowerCase().includes('krisplus'))).toBe(false)
+      expect(items.some((it) => it.name.toLowerCase() === 'subttl')).toBe(false)
+    })
+
+    it('parses Sanook receipt: implicit decimal 990 → 9.90 and footer subtotal', () => {
+      const rawOcr = `
+1            6302 Deep—fried Chicken                   990 |
+3             6201 Grilled Chicken Satay (3              12.10}
+239.10
+Sub Total
+SERVICE CHA
+GST 9%
+Total
+VISA
+`.trim()
+      const { items, charges } = parseReceipt(rawOcr)
+      const chicken = items.find((it) => it.name.toLowerCase().includes('deep'))
+      expect(chicken?.totalPrice).toBeCloseTo(9.90)
+      expect(charges.find((c) => c.type === 'subtotal')?.amount).toBeCloseTo(239.10)
+      expect(items.some((it) => it.name.toLowerCase().includes('visa'))).toBe(false)
     })
   })
 
@@ -394,35 +447,33 @@ Thank you
     })
 
     it('handles real-world Tesseract output with spaced decimals on every price', () => {
-      // Mirrors the actual OCR output from the Natureland Cafe receipt
+      // Mirrors SINGLE_COLUMN OCR output from samples/sample.jpg (Natureland Cafe)
       const rawOcr = `
 Natureland Cafe
 GST REG NO: 201630159%
 1 (Promo) Guinness $13. 00
 API le J Ce $5. 00
 2 Ki No Bi Bt] $456. 00
-[TEM DI 30% ($136. 80)
+[TEM DISC 30% ($136. 80)
 2 Moscato (WP) $22. 00
-SUBTOTAL $3/1. 80
+SUBTOTAL$371. 80
 10% Svr Chrg $37.18
-0% GST $36. 81
-TOTAL 445. 79
-V1 $445 79
+0% GST$36. 81
+TOTAL      $445. 79
+Vis$445. 79
 `.trim()
       const { items, charges } = parseReceipt(rawOcr)
-      // At minimum the cleanly-OCR'd items must be found
       expect(items.length).toBeGreaterThanOrEqual(2)
       const guinness = items.find((it) => it.name.toLowerCase().includes('guinness'))
       expect(guinness?.totalPrice).toBe(13.00)
       const moscato = items.find((it) => it.name.toLowerCase().includes('moscato'))
       expect(moscato?.totalPrice).toBe(22.00)
       expect(moscato?.quantity).toBe(2)
-      // Service charge and GST must still be detected
+      expect(items.some((it) => it.name.toLowerCase() === 'vis')).toBe(false)
       const svc = charges.find((c) => c.type === 'service_charge')
       expect(svc?.amount).toBeCloseTo(37.18)
       const gst = charges.find((c) => c.type === 'gst')
       expect(gst?.amount).toBeCloseTo(36.81)
-      // Total must be detected
       const total = charges.find((c) => c.type === 'total')
       expect(total?.amount).toBeCloseTo(445.79)
     })
@@ -458,15 +509,55 @@ V1 $445 79
     })
   })
 
-  // ── Backward-compatible shim ─────────────────────────────────────────────────
+  describe('garbled OCR fixtures', () => {
+    it('recovers sample4 footer (shadow, blurry labels)', () => {
+      const rawOcr = `
+Natureland Caf-
+Natureland Spa Pte Ltd
+2 Ki No Bi Bl                              $456. 00
+CUBTOTA                                       $319. 20
+Se oy                  $31.92
+10% Sur Chirge               Puli
+Sar ii           $57.60
+RR                   $382. 72
+`.trim()
+      const parse = parseReceipt(rawOcr)
+      const recon = reconcileReceipt(parse)
+      expect(parse.items.some((it) => /Ki No Bi/i.test(it.name))).toBe(true)
+      expect(parse.items.filter((it) => /Ki No Bi/i.test(it.name))).toHaveLength(1)
+      expect(parse.charges.find((c) => c.type === 'discount')?.amount).toBeCloseTo(-136.8)
+      expect(parse.charges.find((c) => c.type === 'subtotal')?.amount).toBeCloseTo(319.2)
+      expect(parse.charges.find((c) => c.type === 'service_charge')?.amount).toBeCloseTo(31.92)
+      expect(parse.charges.find((c) => c.type === 'gst')?.amount).toBeCloseTo(31.6)
+      expect(parse.charges.find((c) => c.type === 'total')?.amount).toBeCloseTo(382.72)
+      expect(recon.computedTotal).toBeCloseTo(382.72)
+      expect(recon.totalDiff).toBeLessThanOrEqual(0.03)
+      expect(recon.status).toBe('ok')
+    })
 
-  describe('parseReceiptText shim', () => {
-    it('returns just the items array', () => {
-      const items = parseReceiptText(CLEAN_RECEIPT)
-      expect(Array.isArray(items)).toBe(true)
-      expect(items).toHaveLength(3)
-      expect(items[0]).toHaveProperty('name')
-      expect(items[0]).toHaveProperty('totalPrice')
+    it('recovers Natureland phone OCR footer math', () => {
+      const rawOcr = `
+PERS AEA
+Natureland Cafe     :
+Natureland Spa Pte Ltd -
+ToT $13.00
+1 (Promo)  Gul mess
+1 Apple Jui      =      $5.00
+1 Nika FT barrel bls        $18. 00
+{TEM DISC 30%               ($5. 40)
+2 Ki No Bi Bt}              $456. 00
+ITEM DISC 30%             {$135, 80)
+2 Moscato (WP)      Ca $2.00
+Tn LR ne $371.80
+vr Chegs ©        so $31.18
+96ST mT Th $36.81
+$445. 79
+`.trim()
+      const parse = parseReceipt(rawOcr)
+      const recon = reconcileReceipt(parse)
+      expect(parse.charges.find((c) => c.type === 'subtotal')?.amount).toBeCloseTo(371.8)
+      expect(parse.charges.find((c) => c.type === 'total')?.amount).toBeCloseTo(445.79)
+      expect(recon.computedTotal).toBeCloseTo(445.79, 1)
     })
   })
 

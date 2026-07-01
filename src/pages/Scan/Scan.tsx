@@ -1,10 +1,15 @@
-import { useRef, useState, useCallback } from 'react'
+import { useRef, useState, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { createWorker, PSM } from 'tesseract.js'
-import type { LoggerMessage } from 'tesseract.js'
 import { useReceipt } from '../../store/ReceiptContext'
-import { parseReceiptText } from '../../utils/parseReceipt'
-import type { ParsedItem } from '../../utils/parseReceipt'
+import type { ParseResult } from '../../utils/parseReceipt'
+import { preprocessReceiptImage } from '../../utils/receiptImage'
+import { runReceiptOcr } from '../../utils/receiptOcr'
+import {
+  chargesFromParse,
+  extractMerchant,
+  type Reconciliation,
+} from '../../utils/receiptReconcile'
+import { generateId } from '../../utils/storage'
 import { formatCurrency } from '../../utils/split'
 import styles from './Scan.module.css'
 
@@ -12,128 +17,10 @@ import styles from './Scan.module.css'
 
 type ScanState =
   | { mode: 'idle' }
-  | { mode: 'preview';  dataUrl: string }
+  | { mode: 'preview';  dataUrl: string; processedUrl?: string; showProcessed: boolean }
   | { mode: 'scanning'; dataUrl: string; ocrStatus: string; progress: number }
-  | { mode: 'parsed';   dataUrl: string; rawText: string; items: ParsedItem[] }
+  | { mode: 'parsed';   dataUrl: string; rawText: string; parseResult: ParseResult; reconciliation: Reconciliation }
   | { mode: 'error';    dataUrl: string; message: string }
-
-// ── Image preprocessor ────────────────────────────────────────────────────────
-
-// Otsu's global thresholding: finds the intensity split that maximises
-// between-class variance, then converts every pixel to pure black or white.
-// This outperforms CSS contrast filters for thermal receipt photos because it
-// adapts to the actual luminance distribution rather than applying a fixed boost.
-function binarize(imageData: ImageData): ImageData {
-  const { data, width, height } = imageData
-  const n = width * height
-
-  const hist = new Uint32Array(256)
-  for (let i = 0; i < n; i++) hist[data[i * 4]]++
-
-  let sum = 0
-  for (let t = 0; t < 256; t++) sum += t * hist[t]
-
-  let sumB = 0, wB = 0, max = 0, threshold = 128
-  for (let t = 0; t < 256; t++) {
-    wB += hist[t]
-    if (wB === 0) continue
-    const wF = n - wB
-    if (wF === 0) break
-    sumB += t * hist[t]
-    const between = wB * wF * ((sumB / wB) - ((sum - sumB) / wF)) ** 2
-    if (between > max) { max = between; threshold = t }
-  }
-
-  const output = new ImageData(width, height)
-  const out = output.data
-  for (let i = 0; i < n; i++) {
-    const val = data[i * 4] >= threshold ? 255 : 0
-    const j = i * 4
-    out[j] = val; out[j + 1] = val; out[j + 2] = val; out[j + 3] = 255
-  }
-  return output
-}
-
-function preprocessImage(dataUrl: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.onload = () => {
-      const MAX = 2400
-      const MIN = 1200
-      const longest = Math.max(img.width, img.height)
-      const scale = longest > MAX
-        ? MAX / longest
-        : longest < MIN ? Math.min(2, MIN / longest) : 1
-
-      const w = Math.round(img.width  * scale)
-      const h = Math.round(img.height * scale)
-
-      const canvas = document.createElement('canvas')
-      canvas.width  = w
-      canvas.height = h
-      const ctx = canvas.getContext('2d')!
-
-      ctx.filter = 'grayscale(1)'
-      ctx.drawImage(img, 0, 0, w, h)
-
-      ctx.putImageData(binarize(ctx.getImageData(0, 0, w, h)), 0, 0)
-      resolve(canvas.toDataURL('image/png'))
-    }
-    img.onerror = reject
-    img.src = dataUrl
-  })
-}
-
-// ── OCR runner (module-level pure async fn) ───────────────────────────────────
-
-async function runOcr(
-  dataUrl: string,
-  onUpdate: (status: string, progress: number) => void,
-): Promise<{ rawText: string; items: ParsedItem[] }> {
-  // Preprocess before handing off to Tesseract
-  onUpdate('Preparing image…', 2)
-  const processedUrl = await preprocessImage(dataUrl)
-
-  const worker = await createWorker('eng', 1, {
-    logger: (m: LoggerMessage) => {
-      const { status, progress } = m
-      let pct = 0
-      let label = ''
-
-      if (status === 'loading tesseract core') {
-        pct = 8;  label = 'Loading OCR engine…'
-      } else if (status === 'initializing tesseract') {
-        pct = 13; label = 'Initializing…'
-      } else if (status === 'loading language traineddata') {
-        pct = 13 + progress * 30; label = 'Downloading language data…'
-      } else if (status === 'initializing api') {
-        pct = 45; label = 'Almost ready…'
-      } else if (status === 'recognizing text') {
-        pct = 48 + progress * 52; label = 'Reading receipt…'
-      }
-
-      if (label) onUpdate(label, Math.round(pct))
-    },
-  })
-
-  try {
-    await worker.setParameters({
-      tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
-      // Tesseract defaults to 70 DPI; receipts are 200–300 DPI — setting this
-      // correctly changes how Tesseract estimates character widths and spacing.
-      user_defined_dpi: '300',
-      // Prevent Tesseract from collapsing inter-word spaces (common on column-
-      // aligned receipts where the gap between item name and price is wide).
-      preserve_interword_spaces: '1',
-    } as Parameters<typeof worker.setParameters>[0])
-
-    const { data: { text } } = await worker.recognize(processedUrl)
-    const items = parseReceiptText(text)
-    return { rawText: text, items }
-  } finally {
-    await worker.terminate()
-  }
-}
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -142,6 +29,7 @@ export default function Scan() {
   const { draft, dispatch } = useReceipt()
   const fileRef   = useRef<HTMLInputElement>(null)
   const [state, setState] = useState<ScanState>({ mode: 'idle' })
+  const [isDragging, setIsDragging] = useState(false)
 
   // ── File selection ──────────────────────────────────────────────────────────
 
@@ -150,7 +38,7 @@ export default function Scan() {
     const reader = new FileReader()
     reader.onload = (e) => {
       const dataUrl = e.target?.result as string
-      setState({ mode: 'preview', dataUrl })
+      setState({ mode: 'preview', dataUrl, showProcessed: false })
     }
     reader.readAsDataURL(file)
   }, [])
@@ -165,9 +53,21 @@ export default function Scan() {
     [handleFile],
   )
 
+  const onDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }, [])
+
+  const onDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDragging(false)
+    }
+  }, [])
+
   const onDrop = useCallback(
     (e: React.DragEvent<HTMLDivElement>) => {
       e.preventDefault()
+      setIsDragging(false)
       const file = e.dataTransfer.files?.[0]
       if (file) handleFile(file)
     },
@@ -176,16 +76,32 @@ export default function Scan() {
 
   // ── OCR ─────────────────────────────────────────────────────────────────────
 
+  // Preprocess in background so the user can preview the enhanced image before OCR.
+  useEffect(() => {
+    if (state.mode !== 'preview') return
+    let cancelled = false
+    preprocessReceiptImage(state.dataUrl)
+      .then((processedUrl) => {
+        if (!cancelled) {
+          setState((prev) =>
+            prev.mode === 'preview' ? { ...prev, processedUrl } : prev,
+          )
+        }
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [state.mode === 'preview' ? state.dataUrl : null])
+
   const startScan = useCallback(
-    async (dataUrl: string) => {
+    async (dataUrl: string, processedUrl?: string) => {
       setState({ mode: 'scanning', dataUrl, ocrStatus: 'Starting…', progress: 0 })
 
       try {
-        const { rawText, items } = await runOcr(dataUrl, (ocrStatus, progress) => {
+        const { rawText, parseResult, reconciliation } = await runReceiptOcr(dataUrl, (ocrStatus, progress) => {
           setState((prev) =>
             prev.mode === 'scanning' ? { ...prev, ocrStatus, progress } : prev,
           )
-        })
+        }, processedUrl)
 
         // Store image + raw text on-device; never sent to a server
         dispatch({
@@ -193,7 +109,7 @@ export default function Scan() {
           payload: { rawImageDataUrl: dataUrl, rawText },
         })
 
-        setState({ mode: 'parsed', dataUrl, rawText, items })
+        setState({ mode: 'parsed', dataUrl, rawText, parseResult, reconciliation })
       } catch (err) {
         setState({
           mode: 'error',
@@ -207,17 +123,21 @@ export default function Scan() {
 
   // ── Confirm parsed items ─────────────────────────────────────────────────────
 
-  const confirmItems = useCallback(
-    (items: ParsedItem[]) => {
+  const confirmScan = useCallback(
+    (parseResult: ParseResult, rawText: string) => {
+      const items = parseResult.items.map((it) => ({
+        id: generateId(),
+        name: it.name,
+        unitPrice: it.unitPrice,
+        quantity: it.quantity,
+        totalPrice: it.totalPrice,
+      }))
+      const charges = chargesFromParse(parseResult)
+      const merchant = extractMerchant(rawText)
+
       dispatch({
-        type: 'SET_ITEMS',
-        payload: items.map((it) => ({
-          id: crypto.randomUUID(),
-          name:       it.name,
-          unitPrice:  it.unitPrice,
-          quantity:   it.quantity,
-          totalPrice: it.totalPrice,
-        })),
+        type: 'APPLY_SCAN_RESULT',
+        payload: { items, charges, merchant },
       })
       navigate('/review')
     },
@@ -253,7 +173,7 @@ export default function Scan() {
             : state.mode === 'scanning'
             ? 'Running OCR in your browser…'
             : state.mode === 'parsed'
-            ? 'Review the extracted items before continuing.'
+            ? 'Check items and receipt math before continuing.'
             : 'Something went wrong with OCR.'}
         </p>
       </header>
@@ -262,9 +182,11 @@ export default function Scan() {
       {state.mode === 'idle' && (
         <>
           <div
-            className={styles.uploadZone}
+            className={`${styles.uploadZone} ${isDragging ? styles.uploadZoneDragging : ''}`}
             onDrop={onDrop}
             onDragOver={(e) => e.preventDefault()}
+            onDragEnter={onDragEnter}
+            onDragLeave={onDragLeave}
             onClick={() => fileRef.current?.click()}
             role="button"
             tabIndex={0}
@@ -301,20 +223,50 @@ export default function Scan() {
       {state.mode === 'preview' && (
         <div className={styles.photoBlock}>
           <img
-            src={state.dataUrl}
+            src={
+              state.showProcessed && state.processedUrl
+                ? state.processedUrl
+                : state.dataUrl
+            }
             alt="Receipt preview"
             className={styles.receiptImg}
           />
+          <div className={styles.previewToolbar}>
+            <button
+              type="button"
+              className={`${styles.previewToggle} ${!state.showProcessed ? styles.previewToggleActive : ''}`}
+              onClick={() => setState((prev) =>
+                prev.mode === 'preview' ? { ...prev, showProcessed: false } : prev,
+              )}
+            >
+              Original
+            </button>
+            <button
+              type="button"
+              className={`${styles.previewToggle} ${state.showProcessed ? styles.previewToggleActive : ''}`}
+              onClick={() => setState((prev) =>
+                prev.mode === 'preview' ? { ...prev, showProcessed: true } : prev,
+              )}
+              disabled={!state.processedUrl}
+            >
+              Enhanced{state.processedUrl ? '' : '…'}
+            </button>
+          </div>
+          <p className={styles.previewHint}>
+            {state.processedUrl
+              ? 'Enhanced view shows how OCR sees your receipt. Retake if text looks washed out.'
+              : 'Preparing enhanced preview…'}
+          </p>
           <div className={styles.photoActions}>
             <button
               className="btn btn-secondary"
-              onClick={() => { setState({ mode: 'idle' }); fileRef.current?.click() }}
+              onClick={() => fileRef.current?.click()}
             >
               <CameraIcon /> Retake
             </button>
             <button
               className="btn btn-primary"
-              onClick={() => startScan(state.dataUrl)}
+              onClick={() => startScan(state.dataUrl, state.processedUrl)}
             >
               <ScanIcon /> Scan Receipt
             </button>
@@ -347,6 +299,11 @@ export default function Scan() {
                 Language data downloads once and is cached on your device.
               </p>
             )}
+            {state.progress >= 48 && state.progress < 95 && (
+              <p className={styles.progressHint}>
+                Trying multiple read modes for best accuracy…
+              </p>
+            )}
           </div>
         </div>
       )}
@@ -356,10 +313,11 @@ export default function Scan() {
         <ParsedView
           dataUrl={state.dataUrl}
           rawText={state.rawText}
-          items={state.items}
+          parseResult={state.parseResult}
+          reconciliation={state.reconciliation}
           currency={draft.receipt.currency}
-          onConfirm={confirmItems}
-          onRetake={() => { setState({ mode: 'idle' }); fileRef.current?.click() }}
+          onConfirm={() => confirmScan(state.parseResult, state.rawText)}
+          onRetake={() => fileRef.current?.click()}
           onSkip={() => navigate('/review')}
         />
       )}
@@ -370,7 +328,7 @@ export default function Scan() {
           dataUrl={state.dataUrl}
           message={state.message}
           onRetry={() => startScan(state.dataUrl)}
-          onRetake={() => { setState({ mode: 'idle' }); fileRef.current?.click() }}
+          onRetake={() => fileRef.current?.click()}
           onSkip={() => navigate('/review')}
         />
       )}
@@ -396,18 +354,22 @@ export default function Scan() {
 interface ParsedViewProps {
   dataUrl: string
   rawText: string
-  items: ParsedItem[]
+  parseResult: ParseResult
+  reconciliation: Reconciliation
   currency: string
-  onConfirm: (items: ParsedItem[]) => void
+  onConfirm: () => void
   onRetake: () => void
   onSkip: () => void
 }
 
 function ParsedView({
-  dataUrl, rawText, items, currency, onConfirm, onRetake, onSkip,
+  dataUrl, rawText, parseResult, reconciliation, currency, onConfirm, onRetake, onSkip,
 }: ParsedViewProps) {
   const [showRaw, setShowRaw] = useState(false)
+  const { items } = parseResult
   const hasItems = items.length > 0
+  const mathOk = reconciliation.status === 'ok'
+  const mathWarn = reconciliation.status === 'warn'
 
   return (
     <div className={styles.parsedBlock}>
@@ -417,8 +379,9 @@ function ParsedView({
         <div className={styles.thumbMeta}>
           {hasItems ? (
             <>
-              <span className={styles.thumbBadgeOk}>
-                <CheckIcon /> OCR complete
+              <span className={mathOk ? styles.thumbBadgeOk : mathWarn ? styles.thumbBadgeWarn : styles.thumbBadgeFail}>
+                {mathOk ? <CheckIcon /> : <WarnIcon />}
+                {mathOk ? ' Math checks out' : mathWarn ? ' Review math' : ' Math mismatch'}
               </span>
               <p className={styles.thumbCount}>
                 Found <strong>{items.length}</strong> item{items.length !== 1 ? 's' : ''}
@@ -437,6 +400,31 @@ function ParsedView({
         </div>
       </div>
 
+      {/* Receipt math reconciliation */}
+      {hasItems && reconciliation.lines.length > 1 && (
+        <div className={`card ${styles.mathCard} ${mathOk ? styles.mathOk : mathWarn ? styles.mathWarn : styles.mathFail}`}>
+          <h3 className={styles.mathTitle}>Receipt math</h3>
+          <ul className={styles.mathLines}>
+            {reconciliation.lines.map((line, i) => (
+              <li
+                key={`${line.label}-${i}`}
+                className={
+                  line.label.startsWith('Total') || line.label.startsWith('Calculated')
+                    ? styles.mathLineTotal
+                    : styles.mathLine
+                }
+              >
+                <span>{line.label}</span>
+                <span>{formatCurrency(line.amount, currency)}</span>
+              </li>
+            ))}
+          </ul>
+          {reconciliation.messages.length > 0 && (
+            <p className={styles.mathHint}>{reconciliation.messages[0]}</p>
+          )}
+        </div>
+      )}
+
       {/* Parsed item list */}
       {hasItems && (
         <ul className={styles.parsedList}>
@@ -444,9 +432,9 @@ function ParsedView({
             <li key={i} className={styles.parsedItem}>
               <span className={styles.parsedName}>
                 {item.name}
-                {item.quantity > 1 && (
-                  <span className={styles.parsedQty}> ×{item.quantity}</span>
-                )}
+                <span className={styles.parsedQty}>
+                  {' '}{item.quantity} × {formatCurrency(item.unitPrice, currency)}
+                </span>
               </span>
               <span className={styles.parsedPrice}>
                 {formatCurrency(item.totalPrice, currency)}
@@ -456,7 +444,23 @@ function ParsedView({
         </ul>
       )}
 
-      {/* Raw text disclosure */}
+      {/* CTAs */}
+      <div className={styles.parsedActions}>
+        {hasItems ? (
+          <button type="button" className="btn btn-primary" onClick={onConfirm}>
+            Review &amp; Edit &rarr;
+          </button>
+        ) : (
+          <button type="button" className="btn btn-primary" onClick={onSkip}>
+            Add Manually &rarr;
+          </button>
+        )}
+        <button type="button" className="btn btn-ghost" onClick={onRetake}>
+          <CameraIcon /> Retake
+        </button>
+      </div>
+
+      {/* Raw text disclosure — below CTAs so sticky overlay never blocks it */}
       <button
         className={styles.rawToggle}
         onClick={() => setShowRaw((v) => !v)}
@@ -467,25 +471,6 @@ function ParsedView({
       {showRaw && (
         <pre className={styles.rawText}>{rawText || '(empty)'}</pre>
       )}
-
-      {/* CTAs */}
-      <div className={styles.parsedActions}>
-        <button className="btn btn-ghost" onClick={onRetake}>
-          <CameraIcon /> Retake
-        </button>
-        {hasItems ? (
-          <button
-            className="btn btn-primary"
-            onClick={() => onConfirm(items)}
-          >
-            Review &amp; Edit &rarr;
-          </button>
-        ) : (
-          <button className="btn btn-primary" onClick={onSkip}>
-            Add Manually &rarr;
-          </button>
-        )}
-      </div>
     </div>
   )
 }

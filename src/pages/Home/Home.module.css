@@ -18,13 +18,13 @@
 .heroLogo {
   width: 72px;
   height: 72px;
-  background: var(--color-primary);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
   border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 2rem;
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-md), 0 0 0 6px rgba(108,99,255,0.15);
   margin-bottom: 0.25rem;
 }
 
@@ -70,19 +70,34 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.3rem;
   padding: 0.75rem 0.25rem;
 }
 
+.stepNum {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
 .stepEmoji {
-  font-size: 1.5rem;
+  font-size: 1.4rem;
 }
 
 .stepLabel {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 500;
   text-align: center;
   color: var(--color-muted);
+  line-height: 1.3;
 }
 
 /* ── Session history ──────────────────────────────────────────────── */
@@ -98,9 +113,8 @@
 .sessionCard {
   display: flex;
   align-items: center;
-  padding: 1rem;
+  padding: 0.875rem 1rem;
   gap: 0.75rem;
-  cursor: default;
 }
 
 .sessionInfo {
@@ -128,4 +142,18 @@
   font-size: 0.75rem;
   color: var(--color-muted);
   opacity: 0.7;
+}
+
+.sessionRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+  flex-shrink: 0;
+}
+
+.sessionTotal {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-primary);
 }
