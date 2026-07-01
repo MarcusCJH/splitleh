@@ -1,0 +1,225 @@
+/* ── Page shell ───────────────────────────────────────────────────── */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.5rem 1rem 2rem;
+  animation: fadeSlideIn 0.25s ease-out both;
+}
+
+.header { display: flex; flex-direction: column; gap: 0.25rem; }
+.title  { font-size: 1.5rem; font-weight: 700; }
+.sub    { font-size: 0.875rem; color: var(--color-muted); }
+
+/* ── Result list ──────────────────────────────────────────────────── */
+.resultList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* ── Person card ──────────────────────────────────────────────────── */
+.personCard {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Header row: avatar + name/sub + total */
+.personHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.875rem;
+}
+
+.personAvatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.05rem;
+  flex-shrink: 0;
+}
+
+.personMeta {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.personName {
+  font-weight: 700;
+  font-size: 1.05rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.personSub {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+}
+
+.personTotal {
+  font-size: 1.3rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+/* ── Shared row list (items + charges share the same row structure) ── */
+.rowList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border-left: 2px solid var(--color-border);
+  padding-left: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.itemRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.3rem 0;
+  font-size: 0.875rem;
+}
+
+.rowName {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rowAmount {
+  font-weight: 600;
+  color: var(--color-text);
+  flex-shrink: 0;
+}
+
+.sharedBadge {
+  font-size: 0.75rem;
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+/* ── Charge rows ──────────────────────────────────────────────────── */
+.chargeList {
+  border-left-color: var(--color-border);
+  border-left-style: dashed;
+  margin-top: -0.25rem;  /* tuck under item list */
+}
+
+.chargeRow { }
+
+.chargeName {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-muted);
+  font-size: 0.82rem;
+}
+
+.chargePos {
+  font-size: 0.82rem;
+  color: var(--color-muted);
+  flex-shrink: 0;
+}
+
+.chargeNeg {
+  font-size: 0.82rem;
+  color: var(--color-success);   /* green — it's money back */
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* ── Breakdown footer ─────────────────────────────────────────────── */
+.breakdown {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-top: 0.625rem;
+  border-top: 1px dashed var(--color-border);
+  font-size: 0.8rem;
+  margin-top: 0.125rem;
+}
+
+.breakdownLeft { color: var(--color-muted); }
+.breakdownTotal { font-weight: 700; flex-shrink: 0; }
+
+/* ── Unassigned warning ───────────────────────────────────────────── */
+.unassignedNote {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  font-size: 0.82rem;
+  color: var(--color-muted);
+  align-items: flex-start;
+  border-left: 3px solid var(--color-accent);
+}
+
+/* ── Grand total card ─────────────────────────────────────────────── */
+.grandTotalCard {
+  padding: 1rem 1.25rem;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+  border: none;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.gtRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.gtLabel  { font-size: 0.9rem; font-weight: 600; opacity: 0.85; }
+.gtAmount { font-size: 1.5rem; font-weight: 800; }
+.gtNote   { font-size: 0.78rem; opacity: 0.75; }
+
+/* ── Actions ──────────────────────────────────────────────────────── */
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* "Copied!" success state for the copy button */
+.btnCopied {
+  background: var(--color-success);
+  color: #fff;
+  box-shadow: var(--shadow-md);
+  pointer-events: none;
+}
+
+.startOver {
+  align-self: center;
+  font-size: 0.875rem;
+  color: var(--color-muted);
+}
+
+/* ── Empty states ─────────────────────────────────────────────────── */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 3rem 1rem;
+  text-align: center;
+}
+
+.emptyIcon { font-size: 2.5rem; }

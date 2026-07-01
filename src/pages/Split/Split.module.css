@@ -1,0 +1,360 @@
+/* ── Page shell ──────────────────────────────────────────────────── */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1.25rem 1rem 2rem;
+  animation: fadeSlideIn 0.25s ease-out both;
+}
+
+/* ── Header ───────────────────────────────────────────────────────── */
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.title { font-size: 1.5rem; font-weight: 700; }
+
+.merchant {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--color-muted);
+}
+
+.sub {
+  font-size: 0.875rem;
+  color: var(--color-muted);
+}
+
+/* ── Section head ─────────────────────────────────────────────────── */
+.sectionHead {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.sectionTitle {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--color-muted);
+}
+
+.sectionBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  border-radius: var(--radius-pill);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+/* ── People roster ────────────────────────────────────────────────── */
+.peopleRoster {
+  display: flex;
+  gap: 0.625rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.peopleRoster::-webkit-scrollbar { display: none; }
+
+/* ── Person card (in roster) ──────────────────────────────────────── */
+.personCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.75rem 0.875rem 0.625rem;
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  min-width: 76px;
+  max-width: 88px;
+  flex-shrink: 0;
+  scroll-snap-align: start;
+  transition: border-color 0.15s;
+  text-align: center;
+}
+.personCard:hover { border-color: var(--color-primary); }
+
+.personRemoveBtn {
+  position: absolute;
+  top: 4px;
+  right: 5px;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 0.95rem;
+  line-height: 1;
+  color: var(--color-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.personRemoveBtn:hover { background: #FFF0F3; color: var(--color-danger); }
+
+.personAvatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.personCardName {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 70px;
+}
+
+.personCardSub {
+  font-size: 0.72rem;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+/* ── Add person row ───────────────────────────────────────────────── */
+.addPersonRow {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+/* ── Progress label (X/Y beside section title) ────────────────────── */
+.progressLabel {
+  margin-left: auto;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-muted);
+  background: var(--color-primary-light);
+  padding: 0.15rem 0.55rem;
+  border-radius: var(--radius-pill);
+}
+.progressDone {
+  background: #EAFAF1;
+  color: #27AE60;
+}
+
+/* ── Progress bar ─────────────────────────────────────────────────── */
+.progressTrack {
+  height: 5px;
+  background: var(--color-border);
+  border-radius: 99px;
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: 99px;
+  transition: width 0.35s ease;
+}
+.progressFillDone { background: #27AE60; }
+
+/* ── Item list ────────────────────────────────────────────────────── */
+.itemList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  margin-bottom: 0.75rem;
+}
+
+/* ── Item card ────────────────────────────────────────────────────── */
+.itemCard {
+  padding: 0.875rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  border-left: 3px solid transparent;
+  transition: border-color 0.2s;
+}
+
+.cardUnassigned { border-left-color: var(--color-accent); }
+.cardPartial    { border-left-color: var(--color-primary); }
+.cardAll        { border-left-color: #27AE60; }
+
+/* ── Item info row ────────────────────────────────────────────────── */
+.itemRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.itemInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.itemName {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.itemQtyHint {
+  font-size: 0.72rem;
+  color: var(--color-muted);
+}
+
+.itemPrice {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+/* ── Person chip row ──────────────────────────────────────────────── */
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+/* ── Individual toggle chip ───────────────────────────────────────── */
+.personChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--color-border);
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 32px;
+}
+.personChip:active { transform: scale(0.96); }
+
+.personChipOn {
+  font-weight: 700;
+}
+
+/* ── All / Clear action chips ─────────────────────────────────────── */
+.actionChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-pill);
+  border: 1.5px dashed var(--color-border);
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  min-height: 32px;
+}
+.actionChip:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.clearChip:hover {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+  background: #FFF0F3;
+}
+
+/* ── Shared note ──────────────────────────────────────────────────── */
+.sharedNote {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+  padding: 0.35rem 0.625rem;
+  border-radius: var(--radius-sm);
+}
+
+/* ── Unassigned label ─────────────────────────────────────────────── */
+.unassignedLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--color-accent);
+  font-weight: 500;
+}
+
+/* ── Nudge cards (empty states within page) ───────────────────────── */
+.nudgeCard {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 1rem;
+  font-size: 0.875rem;
+  color: var(--color-muted);
+  border-style: dashed;
+}
+
+.nudgeCard > span { font-size: 1.4rem; flex-shrink: 0; }
+
+.nudgeCard > div { flex: 1; }
+
+.nudgeCard strong {
+  display: block;
+  color: var(--color-text);
+  margin-bottom: 0.15rem;
+}
+
+.nudgeCard p { margin: 0; }
+
+/* ── No-session empty page ────────────────────────────────────────── */
+.emptyPage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 4rem 1rem;
+  text-align: center;
+}
+
+.emptyIcon { font-size: 3rem; }
+
+.emptyPage h2 { font-size: 1.2rem; }
+
+.emptyPage p {
+  font-size: 0.875rem;
+  color: var(--color-muted);
+  margin: -0.25rem 0 0.5rem;
+}

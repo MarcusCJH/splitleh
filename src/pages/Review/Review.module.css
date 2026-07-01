@@ -1,0 +1,435 @@
+/* ── Page shell ──────────────────────────────────────────────────── */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1.25rem 1rem 1.5rem;
+  animation: fadeSlideIn 0.25s ease-out both;
+}
+
+/* ── Header ───────────────────────────────────────────────────────── */
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.merchantInput {
+  width: 100%;
+  border: none;
+  border-bottom: 1.5px solid var(--color-border);
+  border-radius: 0;
+  padding: 0.35rem 0;
+  font-size: 0.9rem;
+  color: var(--color-muted);
+  background: transparent;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.merchantInput:focus {
+  border-bottom-color: var(--color-primary);
+  color: var(--color-text);
+}
+.merchantInput::placeholder {
+  color: var(--color-muted);
+  opacity: 0.6;
+}
+
+/* ── Section ──────────────────────────────────────────────────────── */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.sectionHead {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sectionTitle {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--color-muted);
+}
+
+.sectionBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  border-radius: var(--radius-pill);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+/* ── Empty state ──────────────────────────────────────────────────── */
+.emptyItems {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 2.25rem 1rem;
+  text-align: center;
+  border: 1.5px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  box-shadow: none;
+}
+.emptyIcon { font-size: 2rem; margin-bottom: 0.25rem; }
+.emptyItems p { font-size: 0.9rem; font-weight: 500; color: var(--color-text); margin: 0; }
+.emptyHint { font-size: 0.8rem !important; color: var(--color-muted) !important; font-weight: 400 !important; }
+
+/* ── Item list ────────────────────────────────────────────────────── */
+.itemList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.itemCard {
+  padding: 0.875rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: box-shadow 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+  overflow: hidden;
+}
+.itemCard:active { transform: scale(0.99); }
+
+.itemCardEditing {
+  cursor: default;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-light), var(--shadow-sm);
+}
+.itemCardEditing::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--color-primary);
+  border-radius: 0 2px 2px 0;
+}
+
+.itemBody {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.itemLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.itemName {
+  font-weight: 500;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.unnamed { color: var(--color-muted); font-style: italic; font-weight: 400; }
+
+.itemNotes {
+  font-size: 0.72rem;
+  color: var(--color-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.itemRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.1rem;
+  flex-shrink: 0;
+}
+.itemQty {
+  font-size: 0.72rem;
+  color: var(--color-muted);
+}
+.itemTotal {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--color-primary);
+}
+
+.chevron {
+  color: var(--color-muted);
+  opacity: 0.4;
+  flex-shrink: 0;
+}
+
+.addItemBtn { margin-top: 0.25rem; }
+
+/* ── Edit form ────────────────────────────────────────────────────── */
+.editForm {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.editGrid {
+  display: grid;
+  grid-template-columns: 1fr 90px;
+  gap: 0.625rem;
+}
+
+.editField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.editLabel {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-muted);
+}
+
+/* $ prefix inside price input */
+.currencyWrap {
+  position: relative;
+}
+.currencyPrefix {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.9rem;
+  color: var(--color-muted);
+  pointer-events: none;
+}
+.currencyInput { padding-left: 1.75rem !important; }
+
+/* Live total preview line */
+.editPreview {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.35rem 0.75rem;
+  background: var(--color-primary-light);
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  color: var(--color-muted);
+}
+.editPreviewTotal {
+  font-weight: 700;
+  color: var(--color-primary);
+  font-size: 0.9rem;
+}
+
+.editActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+.editRight {
+  display: flex;
+  gap: 0.5rem;
+}
+.editActions .btn { padding: 0.55rem 1rem; font-size: 0.875rem; }
+
+/* ── Charges panel ────────────────────────────────────────────────── */
+.chargesPanel {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.chargesPanelTitle {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--color-muted);
+  margin-bottom: 0.125rem;
+}
+
+/* ── Charge row ───────────────────────────────────────────────────── */
+.chargeRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.chargeHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.chargeIcon { font-size: 0.9rem; flex-shrink: 0; }
+.chargeLabelText {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chargeBtns {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+/* "Auto 10%" button */
+.autoBtn {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--color-primary);
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+.autoBtn:hover { background: var(--color-primary); color: #fff; }
+
+.removeChargeBtn {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--color-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.removeChargeBtn:hover { background: #FFF0F3; color: var(--color-danger); }
+
+/* Amount input row */
+.chargeInputRow {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.negSign {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-success);
+  line-height: 1;
+  flex-shrink: 0;
+}
+.currencySign {
+  font-size: 0.9rem;
+  color: var(--color-muted);
+  flex-shrink: 0;
+}
+.chargeInput {
+  flex: 1;
+  text-align: right;
+}
+
+/* Add discount / rounding buttons */
+.addCharges {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-top: 0.25rem;
+  border-top: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+.addChargesLabel {
+  font-size: 0.78rem;
+  color: var(--color-muted);
+}
+.addChargeBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.3rem 0.75rem;
+  border-radius: var(--radius-pill);
+  border: 1.5px dashed var(--color-border);
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.addChargeBtn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+/* ── Total summary card ───────────────────────────────────────────── */
+.totalCard {
+  padding: 1rem 1.125rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.totalRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.9rem;
+  color: var(--color-muted);
+}
+.totalCount { opacity: 0.7; }
+.totalNegative { color: var(--color-success); }
+
+.totalDivider {
+  height: 1px;
+  background: var(--color-border);
+  margin: 0.25rem 0;
+}
+
+.totalFinal {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+/* ── Empty page ───────────────────────────────────────────────────── */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 4rem 1rem;
+  text-align: center;
+}
+.empty span { font-size: 2.5rem; }
