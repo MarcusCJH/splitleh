@@ -1,4 +1,4 @@
-import { useState, useCallback, type FocusEvent } from 'react'
+import { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useReceipt } from '../../store/ReceiptContext'
 import type { Action } from '../../store/ReceiptContext'
@@ -117,7 +117,7 @@ export default function Review() {
 
 // ── MerchantInput ─────────────────────────────────────────────────────────────
 
-function MerchantInput({ value, onCommit }: { value: string; onCommit: (v: string) => void }) {
+function MerchantInput({ value, onCommit }: Readonly<{ value: string; onCommit: (v: string) => void }>) {
   return (
     <input
       type="text"
@@ -141,7 +141,7 @@ interface ItemCardProps {
   onCancel: () => void
 }
 
-function ItemCard({ item, isEditing, currency, onTap, onSave, onDelete, onCancel }: ItemCardProps) {
+function ItemCard({ item, isEditing, currency, onTap, onSave, onDelete, onCancel }: Readonly<ItemCardProps>) {
   if (isEditing) {
     return (
       <li className={`${styles.itemCard} ${styles.itemCardEditing} card`}>
@@ -151,30 +151,26 @@ function ItemCard({ item, isEditing, currency, onTap, onSave, onDelete, onCancel
   }
 
   return (
-    <li
-      className={`${styles.itemCard} card`}
-      onClick={onTap}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => e.key === 'Enter' && onTap()}
-    >
-      <div className={styles.itemBody}>
-        <div className={styles.itemLeft}>
-          <span className={styles.itemName}>
-            {item.name || <em className={styles.unnamed}>Unnamed item</em>}
-          </span>
-          {item.notes && <span className={styles.itemNotes}>{item.notes}</span>}
-        </div>
-        <div className={styles.itemRight}>
-          {item.quantity > 1 && (
-            <span className={styles.itemQty}>
-              {item.quantity} &times; {formatCurrency(item.unitPrice, currency)}
+    <li>
+      <button className={`${styles.itemCard} card`} onClick={onTap}>
+        <div className={styles.itemBody}>
+          <div className={styles.itemLeft}>
+            <span className={styles.itemName}>
+              {item.name || <em className={styles.unnamed}>Unnamed item</em>}
             </span>
-          )}
-          <span className={styles.itemTotal}>{formatCurrency(item.totalPrice, currency)}</span>
+            {item.notes && <span className={styles.itemNotes}>{item.notes}</span>}
+          </div>
+          <div className={styles.itemRight}>
+            {item.quantity > 1 && (
+              <span className={styles.itemQty}>
+                {item.quantity} &times; {formatCurrency(item.unitPrice, currency)}
+              </span>
+            )}
+            <span className={styles.itemTotal}>{formatCurrency(item.totalPrice, currency)}</span>
+          </div>
         </div>
-      </div>
-      <ChevronIcon />
+        <ChevronIcon />
+      </button>
     </li>
   )
 }
@@ -189,14 +185,14 @@ interface EditFormProps {
   onCancel: () => void
 }
 
-function EditForm({ item, currency, onSave, onDelete, onCancel }: EditFormProps) {
+function EditForm({ item, currency, onSave, onDelete, onCancel }: Readonly<EditFormProps>) {
   const [name,  setName]  = useState(item.name)
   const [price, setPrice] = useState(item.unitPrice > 0 ? String(item.unitPrice) : '')
   const [qty,   setQty]   = useState(String(item.quantity))
   const [notes, setNotes] = useState(item.notes ?? '')
 
-  const unitPrice    = parseFloat(price) || 0
-  const quantity     = Math.max(1, parseInt(qty) || 1)
+  const unitPrice    = Number.parseFloat(price) || 0
+  const quantity     = Math.max(1, Number.parseInt(qty) || 1)
   const computedTotal = unitPrice * quantity
 
   const save = useCallback(() => {
@@ -230,10 +226,11 @@ function EditForm({ item, currency, onSave, onDelete, onCancel }: EditFormProps)
       {/* Price + Qty row */}
       <div className={styles.editGrid}>
         <div className={styles.editField}>
-          <label className={styles.editLabel}>Unit price</label>
+          <label htmlFor={`price-${item.id}`} className={styles.editLabel}>Unit price</label>
           <div className={styles.currencyWrap}>
             <span className={styles.currencyPrefix}>$</span>
             <input
+              id={`price-${item.id}`}
               type="text"
               inputMode="decimal"
               className={`input-field ${styles.currencyInput}`}
@@ -245,8 +242,9 @@ function EditForm({ item, currency, onSave, onDelete, onCancel }: EditFormProps)
           </div>
         </div>
         <div className={styles.editField}>
-          <label className={styles.editLabel}>Qty</label>
+          <label htmlFor={`qty-${item.id}`} className={styles.editLabel}>Qty</label>
           <input
+            id={`qty-${item.id}`}
             type="text"
             inputMode="numeric"
             className="input-field"
@@ -318,7 +316,7 @@ interface ChargesPanelProps {
   dispatch: React.Dispatch<Action>
 }
 
-function ChargesPanel({ charges, subtotal, dispatch }: ChargesPanelProps) {
+function ChargesPanel({ charges, subtotal, dispatch }: Readonly<ChargesPanelProps>) {
   const hasDiscount = charges.some((c) => c.type === 'discount')
   const hasRounding = charges.some((c) => c.type === 'rounding')
 
@@ -331,7 +329,7 @@ function ChargesPanel({ charges, subtotal, dispatch }: ChargesPanelProps) {
 
       {charges.map((charge) => (
         <ChargeRow
-          key={`${charge.id}-${charge.amount}`}
+          key={charge.id}
           charge={charge}
           subtotal={subtotal}
           onUpdate={(c) => dispatch({ type: 'UPSERT_CHARGE', payload: c })}
@@ -375,19 +373,23 @@ interface ChargeRowProps {
   onRemove: (id: string) => void
 }
 
-function ChargeRow({ charge, subtotal, onUpdate, onRemove }: ChargeRowProps) {
+function ChargeRow({ charge, subtotal, onUpdate, onRemove }: Readonly<ChargeRowProps>) {
   const meta       = CHARGE_META[charge.type]
   const isDiscount = charge.type === 'discount'
-  const displayAbs = Math.abs(charge.amount)
+  const [inputValue, setInputValue] = useState(() => {
+    const abs = Math.abs(charge.amount)
+    return abs > 0 ? String(abs) : ''
+  })
 
-  const commit = (e: FocusEvent<HTMLInputElement>) => {
-    const raw = parseFloat(e.target.value) || 0
+  const commit = () => {
+    const raw = Number.parseFloat(inputValue) || 0
     onUpdate({ ...charge, amount: isDiscount ? -Math.abs(raw) : raw })
   }
 
   const autoCompute = () => {
     if (!charge.rate) return
     const computed = Math.round(subtotal * charge.rate * 100) / 100
+    setInputValue(String(computed))
     onUpdate({ ...charge, amount: computed })
   }
 
@@ -421,7 +423,8 @@ function ChargeRow({ charge, subtotal, onUpdate, onRemove }: ChargeRowProps) {
           inputMode="decimal"
           className={`input-field ${styles.chargeInput}`}
           placeholder="0.00"
-          defaultValue={displayAbs > 0 ? String(displayAbs) : ''}
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
           onBlur={commit}
         />
       </div>
@@ -431,7 +434,7 @@ function ChargeRow({ charge, subtotal, onUpdate, onRemove }: ChargeRowProps) {
 
 // ── TotalSummary ──────────────────────────────────────────────────────────────
 
-function TotalSummary({ receipt }: { receipt: Receipt }) {
+function TotalSummary({ receipt }: Readonly<{ receipt: Receipt }>) {
   const { items, charges, subtotal, total, currency } = receipt
   const visibleCharges = charges.filter((c) => c.amount !== 0)
 

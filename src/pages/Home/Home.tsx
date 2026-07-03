@@ -23,6 +23,14 @@ export default function Home() {
     setSessions(loadSessions())
   }, [])
 
+  const handleViewSession = useCallback((session: SplitSession) => {
+    if (draft && draft.id !== session.id) {
+      if (!globalThis.confirm(`This will discard your current draft "${draft.title}". Continue?`)) return
+    }
+    dispatch({ type: 'LOAD_DRAFT', payload: session })
+    navigate('/result')
+  }, [draft, dispatch, navigate])
+
   return (
     <div className={styles.page}>
       {/* Hero */}
@@ -50,8 +58,8 @@ export default function Home() {
       <section className={styles.steps}>
         <h2 className={styles.sectionTitle}>How it works</h2>
         <div className={styles.stepGrid}>
-          {STEPS.map((step, i) => (
-            <div key={i} className={`${styles.stepCard} card`}>
+          {STEPS.map((step) => (
+            <div key={step.label} className={`${styles.stepCard} card`}>
               <span className={styles.stepNum}>{step.num}</span>
               <span className={styles.stepEmoji}>{step.emoji}</span>
               <span className={styles.stepLabel}>{step.label}</span>
@@ -69,30 +77,33 @@ export default function Home() {
               const chargesTotal = s.receipt.charges.reduce((t, c) => t + c.amount, 0)
               return (
                 <li key={s.id} className={`${styles.sessionCard} card`}>
-                  <div className={styles.sessionInfo}>
-                    <span className={styles.sessionTitle}>{s.title}</span>
-                    <span className={styles.sessionMeta}>
-                      {s.people.length} {s.people.length === 1 ? 'person' : 'people'} ·{' '}
-                      {s.receipt.items.length} items
-                    </span>
-                    <span className={styles.sessionDate}>
-                      {new Date(s.createdAt).toLocaleDateString('en-SG', {
-                        month: 'short', day: 'numeric', year: 'numeric',
-                      })}
-                    </span>
-                  </div>
-                  <div className={styles.sessionRight}>
+                  <button
+                    className={styles.sessionCardBtn}
+                    onClick={() => handleViewSession(s)}
+                  >
+                    <div className={styles.sessionInfo}>
+                      <span className={styles.sessionTitle}>{s.title}</span>
+                      <span className={styles.sessionMeta}>
+                        {s.people.length} {s.people.length === 1 ? 'person' : 'people'} ·{' '}
+                        {s.receipt.items.length} items
+                      </span>
+                      <span className={styles.sessionDate}>
+                        {new Date(s.createdAt).toLocaleDateString('en-SG', {
+                          month: 'short', day: 'numeric', year: 'numeric',
+                        })}
+                      </span>
+                    </div>
                     <span className={styles.sessionTotal}>
                       {formatCurrency(s.receipt.subtotal + chargesTotal, s.receipt.currency)}
                     </span>
-                    <button
-                      className="btn btn-ghost"
-                      onClick={(e) => handleDelete(s.id, e)}
-                      aria-label="Delete session"
-                    >
-                      <TrashIcon />
-                    </button>
-                  </div>
+                  </button>
+                  <button
+                    className="btn btn-ghost"
+                    onClick={(e) => handleDelete(s.id, e)}
+                    aria-label="Delete session"
+                  >
+                    <TrashIcon />
+                  </button>
                 </li>
               )
             })}

@@ -49,7 +49,6 @@
 }
 
 /* ── Steps ────────────────────────────────────────────────────────── */
-.steps {}
 
 .sectionTitle {
   font-size: 0.875rem;
@@ -101,7 +100,6 @@
 }
 
 /* ── Session history ──────────────────────────────────────────────── */
-.history {}
 
 .sessionList {
   list-style: none;
@@ -115,6 +113,25 @@
   align-items: center;
   padding: 0.875rem 1rem;
   gap: 0.75rem;
+  transition: box-shadow var(--transition-base), transform var(--transition-base);
+}
+.sessionCard:has(.sessionCardBtn:hover) {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+.sessionCard:has(.sessionCardBtn:active) {
+  transform: scale(0.98);
+  box-shadow: var(--shadow-sm);
+}
+
+.sessionCardBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .sessionInfo {
@@ -144,16 +161,9 @@
   opacity: 0.7;
 }
 
-.sessionRight {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.2rem;
-  flex-shrink: 0;
-}
-
 .sessionTotal {
   font-size: 1rem;
   font-weight: 700;
   color: var(--color-primary);
+  flex-shrink: 0;
 }

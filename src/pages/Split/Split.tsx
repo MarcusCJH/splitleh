@@ -1,9 +1,9 @@
 import { useState, useCallback, useMemo, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, type NavigateFunction } from 'react-router-dom'
 import { useReceipt } from '../../store/ReceiptContext'
 import { formatCurrency } from '../../utils/split'
 import { SAMPLE_SESSION } from '../../mocks/sampleData'
-import type { Person, ReceiptItem } from '../../types'
+import type { Person, ReceiptItem, SplitSession } from '../../types'
 import styles from './Split.module.css'
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -108,6 +108,22 @@ export default function Split() {
         }
       </header>
 
+      {/* ── Split mode toggle ───────────────────────────────────────── */}
+      <div className={styles.modeToggle}>
+        <button
+          className={`${styles.modeBtn} ${draft.splitMode === 'itemized' ? styles.modeBtnActive : ''}`}
+          onClick={() => dispatch({ type: 'SET_SPLIT_MODE', payload: 'itemized' })}
+        >
+          By item
+        </button>
+        <button
+          className={`${styles.modeBtn} ${draft.splitMode === 'equal' ? styles.modeBtnActive : ''}`}
+          onClick={() => dispatch({ type: 'SET_SPLIT_MODE', payload: 'equal' })}
+        >
+          Equal split
+        </button>
+      </div>
+
       {/* ── People roster ──────────────────────────────────────────── */}
       <section>
         <div className={styles.sectionHead}>
@@ -152,79 +168,132 @@ export default function Split() {
       </section>
 
       {/* ── Item assignment ─────────────────────────────────────────── */}
-      {totalItems === 0 ? (
-        <div className={`${styles.nudgeCard} card`}>
-          <span>🧾</span>
-          <div>
-            <strong>No items yet.</strong>
-            <p>Go back to Review to add items first.</p>
-          </div>
-          <button className="btn btn-secondary" onClick={() => navigate('/review')}>
-            Review &rarr;
-          </button>
-        </div>
-      ) : people.length === 0 ? (
-        <div className={`${styles.nudgeCard} card`}>
-          <span>👆</span>
-          <p>Add at least one person above to start assigning items.</p>
-        </div>
-      ) : (
-        <section>
-          {/* Progress header */}
-          <div className={styles.sectionHead}>
-            <h2 className={styles.sectionTitle}>Assign Items</h2>
-            <span className={`${styles.progressLabel} ${allDone ? styles.progressDone : ''}`}>
-              {assignedCount}/{totalItems}
-            </span>
-          </div>
-
-          {/* Progress bar */}
-          <div className={styles.progressTrack} role="progressbar"
-            aria-valuenow={assignedCount} aria-valuemin={0} aria-valuemax={totalItems}>
-            <div
-              className={`${styles.progressFill} ${allDone ? styles.progressFillDone : ''}`}
-              style={{ width: `${totalItems ? (assignedCount / totalItems) * 100 : 0}%` }}
-            />
-          </div>
-
-          {/* Item cards */}
-          <ul className={styles.itemList}>
-            {receipt.items.map((item) => {
-              const assignedIds = getAssignedPersonIds(item.id)
-              return (
-                <AssignItemCard
-                  key={item.id}
-                  item={item}
-                  assignedIds={assignedIds}
-                  people={people}
-                  currency={receipt.currency}
-                  onToggle={toggleAssign}
-                  onAssignAll={() => assignAll(item.id)}
-                  onClear={() => clearItem(item)}
-                />
-              )
-            })}
-          </ul>
-
-          {/* Bulk action */}
-          {!allDone && (
-            <button className="btn btn-secondary btn-full" onClick={splitAllEqually}>
-              <EqualIcon /> Split everything equally
-            </button>
-          )}
-        </section>
-      )}
+      <AssignItemsView
+        draft={draft}
+        totalItems={totalItems}
+        assignedCount={assignedCount}
+        allDone={allDone}
+        getAssignedPersonIds={getAssignedPersonIds}
+        toggleAssign={toggleAssign}
+        assignAll={assignAll}
+        clearItem={clearItem}
+        splitAllEqually={splitAllEqually}
+        navigate={navigate}
+      />
 
       {/* ── CTA ────────────────────────────────────────────────────── */}
-      <button
-        className="btn btn-primary btn-full"
-        disabled={!canContinue}
-        onClick={() => navigate('/result')}
-      >
-        See Results &rarr;
-      </button>
+      <div className={styles.stickyCta}>
+        <button
+          className="btn btn-primary btn-full"
+          disabled={!canContinue}
+          onClick={() => navigate('/result')}
+        >
+          See Results &rarr;
+        </button>
+      </div>
 
     </div>
+  )
+}
+
+// ── AssignItemsView ───────────────────────────────────────────────────────────
+
+interface AssignItemsViewProps {
+  draft: SplitSession
+  totalItems: number
+  assignedCount: number
+  allDone: boolean
+  getAssignedPersonIds: (id: string) => string[]
+  toggleAssign: (itemId: string, personId: string, assigned: boolean) => void
+  assignAll: (itemId: string) => void
+  clearItem: (item: ReceiptItem) => void
+  splitAllEqually: () => void
+  navigate: NavigateFunction
+}
+
+function AssignItemsView({
+  draft, totalItems, assignedCount, allDone,
+  getAssignedPersonIds, toggleAssign, assignAll, clearItem, splitAllEqually, navigate,
+}: Readonly<AssignItemsViewProps>) {
+  const { receipt, people } = draft
+
+  if (totalItems === 0) {
+    return (
+      <div className={`${styles.nudgeCard} card`}>
+        <span>🧾</span>
+        <div>
+          <strong>No items yet.</strong>
+          <p>Go back to Review to add items first.</p>
+        </div>
+        <button className="btn btn-secondary" onClick={() => navigate('/review')}>
+          Review &rarr;
+        </button>
+      </div>
+    )
+  }
+
+  if (people.length === 0) {
+    return (
+      <div className={`${styles.nudgeCard} card`}>
+        <span>👆</span>
+        <p>Add at least one person above to start assigning items.</p>
+      </div>
+    )
+  }
+
+  if (draft.splitMode === 'equal') {
+    const itemSuffix = totalItems === 1 ? '' : 's'
+    return (
+      <div className={`${styles.equalNote} card`}>
+        <EqualIcon />
+        <div>
+          <strong>Equal split</strong>
+          <p>
+            All {totalItems} item{itemSuffix} divided evenly —{' '}
+            {formatCurrency(receipt.total / people.length, receipt.currency)} per person.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  const progressClass = `${styles.progressTrack} ${allDone ? styles.progressDone : ''}`
+
+  return (
+    <section>
+      <div className={styles.sectionHead}>
+        <h2 className={styles.sectionTitle}>Assign Items</h2>
+        <span className={`${styles.progressLabel} ${allDone ? styles.progressDone : ''}`}>
+          {assignedCount}/{totalItems}
+        </span>
+      </div>
+
+      <progress className={progressClass} value={assignedCount} max={totalItems} />
+
+      <ul className={styles.itemList}>
+        {receipt.items.map((item) => {
+          const assignedIds = getAssignedPersonIds(item.id)
+          return (
+            <AssignItemCard
+              key={item.id}
+              item={item}
+              assignedIds={assignedIds}
+              people={people}
+              currency={receipt.currency}
+              onToggle={toggleAssign}
+              onAssignAll={() => assignAll(item.id)}
+              onClear={() => clearItem(item)}
+            />
+          )
+        })}
+      </ul>
+
+      {allDone ? null : (
+        <button className="btn btn-secondary btn-full" onClick={splitAllEqually}>
+          <EqualIcon /> Split everything equally
+        </button>
+      )}
+    </section>
   )
 }
 
@@ -238,7 +307,7 @@ interface PersonCardProps {
   onRemove: () => void
 }
 
-function PersonCard({ person, itemCount, subtotal, currency, onRemove }: PersonCardProps) {
+function PersonCard({ person, itemCount, subtotal, currency, onRemove }: Readonly<PersonCardProps>) {
   return (
     <div className={styles.personCard}>
       <button
@@ -273,15 +342,15 @@ interface AssignItemCardProps {
 
 function AssignItemCard({
   item, assignedIds, people, currency, onToggle, onAssignAll, onClear,
-}: AssignItemCardProps) {
+}: Readonly<AssignItemCardProps>) {
   const isAssigned    = assignedIds.length > 0
   const allAssigned   = assignedIds.length === people.length && people.length > 0
   const isShared      = assignedIds.length > 1
   const perPerson     = isShared ? item.totalPrice / assignedIds.length : null
 
-  const cardMod = allAssigned ? styles.cardAll
-    : isAssigned ? styles.cardPartial
-    : styles.cardUnassigned
+  let cardMod = styles.cardUnassigned
+  if (allAssigned) cardMod = styles.cardAll
+  else if (isAssigned) cardMod = styles.cardPartial
 
   return (
     <li className={`${styles.itemCard} ${cardMod} card`}>
@@ -313,9 +382,9 @@ function AssignItemCard({
         })}
 
         {/* All / Clear action */}
-        {!isAssigned
-          ? <button className={styles.actionChip} onClick={onAssignAll}>All</button>
-          : <button className={`${styles.actionChip} ${styles.clearChip}`} onClick={onClear}>Clear</button>
+        {isAssigned
+          ? <button className={`${styles.actionChip} ${styles.clearChip}`} onClick={onClear}>Clear</button>
+          : <button className={styles.actionChip} onClick={onAssignAll}>All</button>
         }
       </div>
 
@@ -328,7 +397,7 @@ function AssignItemCard({
       )}
 
       {/* Unassigned label */}
-      {!isAssigned && (
+      {isAssigned ? null : (
         <div className={styles.unassignedLabel}>
           <DotIcon /> Not assigned yet
         </div>
@@ -341,7 +410,7 @@ function AssignItemCard({
 
 function PersonToggleChip({
   person, selected, onToggle,
-}: { person: Person; selected: boolean; onToggle: () => void }) {
+}: Readonly<{ person: Person; selected: boolean; onToggle: () => void }>) {
   return (
     <button
       className={`${styles.personChip} ${selected ? styles.personChipOn : ''}`}

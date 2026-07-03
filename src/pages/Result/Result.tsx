@@ -6,56 +6,57 @@ import { saveSession } from '../../utils/storage'
 import type { PersonResult, SplitResult, SplitSession } from '../../types'
 import styles from './Result.module.css'
 
-// ── Copy text ─────────────────────────────────────────────────────────────────
+// ── Copy text helpers ─────────────────────────────────────────────────────────
+
+function gstSvcLabel(hasGst: boolean, hasSvc: boolean): string {
+  if (hasGst && hasSvc) return 'GST/service'
+  return hasGst ? 'GST' : 'Service charge'
+}
+
+function personCopyLines(r: PersonResult, cur: string, splitMode: SplitSession['splitMode']): string[] {
+  const header = `${r.person.name}: ${formatCurrency(r.total, cur)}`
+
+  const itemLines: string[] = splitMode === 'equal'
+    ? [`- Equal share  ${formatCurrency(r.subtotal, cur)}`]
+    : r.itemShares.map(({ item, amount, outOf }) => {
+        const suffix = outOf > 1 ? ` ÷${outOf}` : ''
+        return `- ${item.name || 'Item'}${suffix}  ${formatCurrency(amount, cur)}`
+      })
+
+  const chargeLines: string[] = []
+  const gstSvc = r.chargeShares.filter(
+    (cs) => (cs.charge.type === 'gst' || cs.charge.type === 'service_charge') && cs.amount > 0.005,
+  )
+  if (gstSvc.length > 0) {
+    const total = gstSvc.reduce((s, cs) => s + cs.amount, 0)
+    const hasGst = gstSvc.some((cs) => cs.charge.type === 'gst')
+    const hasSvc = gstSvc.some((cs) => cs.charge.type === 'service_charge')
+    chargeLines.push(`- ${gstSvcLabel(hasGst, hasSvc)}  ${formatCurrency(total, cur)}`)
+  }
+  for (const cs of r.chargeShares) {
+    if (cs.charge.type === 'discount' && cs.amount < -0.005) {
+      chargeLines.push(`- Discount  ${formatCurrency(cs.amount, cur)}`)
+    }
+  }
+
+  return [header, ...itemLines, ...chargeLines]
+}
 
 function buildCopyText(session: SplitSession, result: SplitResult): string {
   const cur = session.receipt.currency
-  const lines: string[] = []
+  const personSections = result.personResults.flatMap(
+    (r) => ['', ...personCopyLines(r, cur, session.splitMode)],
+  )
+  const unassignedSection = result.unassignedItems.length > 0
+    ? ['', `Not split: ${result.unassignedItems.map((i) => i.name || 'Item').join(', ')}`]
+    : []
 
-  lines.push('SplitSia result')
-  lines.push(`Total: ${formatCurrency(session.receipt.total, cur)}`)
-
-  for (const r of result.personResults) {
-    lines.push('')
-    lines.push(`${r.person.name}: ${formatCurrency(r.total, cur)}`)
-
-    if (session.splitMode === 'equal') {
-      lines.push(`- Equal share  ${formatCurrency(r.subtotal, cur)}`)
-    } else {
-      for (const { item, amount, outOf } of r.itemShares) {
-        const suffix = outOf > 1 ? ` ÷${outOf}` : ''
-        lines.push(`- ${item.name || 'Item'}${suffix}  ${formatCurrency(amount, cur)}`)
-      }
-    }
-
-    // Group GST + service charge into one line for readability
-    const gstSvc = r.chargeShares.filter(
-      (cs) =>
-        (cs.charge.type === 'gst' || cs.charge.type === 'service_charge') &&
-        cs.amount > 0.005,
-    )
-    if (gstSvc.length > 0) {
-      const total = gstSvc.reduce((s, cs) => s + cs.amount, 0)
-      const hasGst = gstSvc.some((cs) => cs.charge.type === 'gst')
-      const hasSvc = gstSvc.some((cs) => cs.charge.type === 'service_charge')
-      const label = hasGst && hasSvc ? 'GST/service' : hasGst ? 'GST' : 'Service charge'
-      lines.push(`- ${label}  ${formatCurrency(total, cur)}`)
-    }
-
-    for (const cs of r.chargeShares) {
-      if (cs.charge.type === 'discount' && cs.amount < -0.005) {
-        lines.push(`- Discount  ${formatCurrency(cs.amount, cur)}`)
-      }
-    }
-  }
-
-  if (result.unassignedItems.length > 0) {
-    lines.push('')
-    const names = result.unassignedItems.map((i) => i.name || 'Item').join(', ')
-    lines.push(`Not split: ${names}`)
-  }
-
-  return lines.join('\n')
+  return [
+    'SplitSia result',
+    `Total: ${formatCurrency(session.receipt.total, cur)}`,
+    ...personSections,
+    ...unassignedSection,
+  ].join('\n')
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -64,6 +65,7 @@ export default function Result() {
   const navigate = useNavigate()
   const { draft, dispatch } = useReceipt()
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle')
+  const [confirmFinish, setConfirmFinish] = useState(false)
 
   const splitResult = useMemo(
     () => (draft ? calculateSplit(draft) : null),
@@ -168,17 +170,19 @@ export default function Result() {
           className={`btn btn-full ${copyState === 'copied' ? styles.btnCopied : 'btn-secondary'}`}
           onClick={copyResult}
         >
-          {copyState === 'copied' ? (
-            <><CheckIcon /> Copied!</>
-          ) : copyState === 'error' ? (
-            <><CopyIcon /> Copy failed — try again</>
-          ) : (
-            <><CopyIcon /> Copy result</>
-          )}
+          <CopyResultLabel state={copyState} />
         </button>
-        <button className="btn btn-primary btn-full" onClick={saveAndFinish}>
-          <CheckIcon /> Save &amp; Done
-        </button>
+        {confirmFinish ? (
+          <div className={styles.confirmRow}>
+            <span className={styles.confirmLabel}>Save and finish?</span>
+            <button className="btn btn-ghost" onClick={() => setConfirmFinish(false)}>Cancel</button>
+            <button className="btn btn-primary" onClick={saveAndFinish}>Confirm</button>
+          </div>
+        ) : (
+          <button className="btn btn-primary btn-full" onClick={() => setConfirmFinish(true)}>
+            <CheckIcon /> Save &amp; Done
+          </button>
+        )}
       </div>
 
       <button
@@ -191,6 +195,20 @@ export default function Result() {
   )
 }
 
+// ── PersonCard helpers ─────────────────────────────────────────────────────────
+
+function personSubLabel(isEqual: boolean, itemCount: number): string {
+  if (isEqual) return 'Equal split'
+  const suffix = itemCount === 1 ? '' : 's'
+  return `${itemCount} item${suffix}`
+}
+
+function chargesSuffix(chargesTotal: number, currency: string): string {
+  if (chargesTotal > 0.005) return ` + ${formatCurrency(chargesTotal, currency)} charges`
+  if (chargesTotal < -0.005) return ` − ${formatCurrency(Math.abs(chargesTotal), currency)} off`
+  return ''
+}
+
 // ── PersonCard ────────────────────────────────────────────────────────────────
 
 function PersonCard({
@@ -198,12 +216,12 @@ function PersonCard({
   currency,
   splitMode,
   index,
-}: {
+}: Readonly<{
   result: PersonResult
   currency: string
   splitMode: SplitSession['splitMode']
   index: number
-}) {
+}>) {
   const { person, itemShares, chargeShares, subtotal, chargesTotal, total } = result
   const isEqual = splitMode === 'equal'
 
@@ -226,11 +244,7 @@ function PersonCard({
         </div>
         <div className={styles.personMeta}>
           <span className={styles.personName}>{person.name}</span>
-          <span className={styles.personSub}>
-            {isEqual
-              ? 'Equal split'
-              : `${itemShares.length} item${itemShares.length !== 1 ? 's' : ''}`}
-          </span>
+          <span className={styles.personSub}>{personSubLabel(isEqual, itemShares.length)}</span>
         </div>
         <span className={styles.personTotal} style={{ color: person.color }}>
           {formatCurrency(total, currency)}
@@ -277,12 +291,7 @@ function PersonCard({
       {hasBreakdown && (
         <div className={styles.breakdown}>
           <span className={styles.breakdownLeft}>
-            {formatCurrency(subtotal, currency)} items
-            {chargesTotal > 0.005
-              ? ` + ${formatCurrency(chargesTotal, currency)} charges`
-              : chargesTotal < -0.005
-              ? ` − ${formatCurrency(Math.abs(chargesTotal), currency)} off`
-              : null}
+            {formatCurrency(subtotal, currency)} items{chargesSuffix(chargesTotal, currency)}
           </span>
           <span className={styles.breakdownTotal} style={{ color: person.color }}>
             = {formatCurrency(total, currency)}
@@ -291,6 +300,14 @@ function PersonCard({
       )}
     </div>
   )
+}
+
+// ── Copy button label (extracted to avoid nested ternary) ─────────────────────
+
+function CopyResultLabel({ state }: Readonly<{ state: 'idle' | 'copied' | 'error' }>) {
+  if (state === 'copied') return <><CheckIcon /> Copied!</>
+  if (state === 'error')  return <><CopyIcon /> Copy failed — try again</>
+  return <><CopyIcon /> Copy result</>
 }
 
 // ── Icons ─────────────────────────────────────────────────────────────────────

@@ -123,7 +123,7 @@
   margin-top: -0.25rem;  /* tuck under item list */
 }
 
-.chargeRow { }
+.chargeRow { display: contents; }
 
 .chargeName {
   flex: 1;
@@ -211,6 +211,24 @@
   align-self: center;
   font-size: 0.875rem;
   color: var(--color-muted);
+}
+
+/* ── Save & Done confirm ──────────────────────────────────────────── */
+.confirmRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.confirmLabel {
+  flex: 1;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text);
 }
 
 /* ── Empty states ─────────────────────────────────────────────────── */

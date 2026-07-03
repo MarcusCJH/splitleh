@@ -101,6 +101,8 @@
 }
 
 .itemCard {
+  width: 100%;
+  text-align: left;
   padding: 1rem 1.125rem;
   display: flex;
   align-items: center;

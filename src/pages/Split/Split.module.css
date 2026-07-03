@@ -155,25 +155,35 @@
 }
 .progressDone {
   background: #EAFAF1;
-  color: #27AE60;
+  color: #166534; /* 6.6:1 contrast on #EAFAF1 */
 }
 
-/* ── Progress bar ─────────────────────────────────────────────────── */
+/* ── Progress bar (<progress> element) ────────────────────────────── */
 .progressTrack {
   height: 5px;
-  background: var(--color-border);
+  width: 100%;
+  margin-bottom: 1rem;
+  appearance: none;
+  border: none;
   border-radius: 99px;
   overflow: hidden;
-  margin-bottom: 1rem;
+  background: var(--color-border);
 }
-
-.progressFill {
-  height: 100%;
+.progressTrack::-webkit-progress-bar {
+  background: var(--color-border);
+  border-radius: 99px;
+}
+.progressTrack::-webkit-progress-value {
   background: var(--color-primary);
   border-radius: 99px;
   transition: width 0.35s ease;
 }
-.progressFillDone { background: #27AE60; }
+.progressTrack::-moz-progress-bar {
+  background: var(--color-primary);
+  border-radius: 99px;
+}
+.progressDone::-webkit-progress-value { background: #27AE60; }
+.progressDone::-moz-progress-bar      { background: #27AE60; }
 
 /* ── Item list ────────────────────────────────────────────────────── */
 .itemList {
@@ -258,7 +268,7 @@
   cursor: pointer;
   transition: all 0.15s;
   -webkit-tap-highlight-color: transparent;
-  min-height: 32px;
+  min-height: 44px;
 }
 .personChip:active { transform: scale(0.96); }
 
@@ -279,7 +289,7 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
-  min-height: 32px;
+  min-height: 44px;
 }
 .actionChip:hover {
   border-color: var(--color-primary);
@@ -338,6 +348,57 @@
 }
 
 .nudgeCard p { margin: 0; }
+
+/* ── Sticky CTA ───────────────────────────────────────────────────── */
+.stickyCta {
+  position: sticky;
+  bottom: 0;
+  padding: 0.875rem 0 0.5rem;
+  background: linear-gradient(to top, var(--color-bg) 70%, transparent);
+  margin-top: -0.5rem;
+}
+
+/* ── Split mode toggle (segmented control) ────────────────────────── */
+.modeToggle {
+  display: flex;
+  background: var(--color-primary-light);
+  border-radius: var(--radius-pill);
+  padding: 3px;
+}
+
+.modeBtn {
+  flex: 1;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #4F4D7A; /* 6.2:1 contrast on --color-primary-light (#EEF0FF) */
+  transition: all 0.18s;
+}
+
+.modeBtnActive {
+  background: var(--color-surface);
+  color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── Equal split note ─────────────────────────────────────────────── */
+.equalNote {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  font-size: 0.9rem;
+  color: var(--color-primary-dark); /* #4A42D6 — 6.1:1 contrast on #EEF0FF */
+  background: var(--color-primary-light);
+  border-color: transparent;
+}
+
+.equalNote p {
+  margin: 0;
+  color: var(--color-primary-dark);
+  font-size: 0.875rem;
+}
 
 /* ── No-session empty page ────────────────────────────────────────── */
 .emptyPage {
