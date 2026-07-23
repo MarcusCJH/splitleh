@@ -1,4 +1,4 @@
-﻿[project]
+[project]
 name = "splitleh-api"
 version = "0.1.0"
 description = "SplitLeh Bot - API Lambda functions"

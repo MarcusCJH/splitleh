@@ -1,4 +1,4 @@
-﻿name: Deploy to GitHub Pages
+name: Deploy to GitHub Pages
 
 # Lite production deploy - master only. PR/branch validation uses ci.yml.
 

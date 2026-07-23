@@ -1,4 +1,4 @@
-﻿[project]
+[project]
 name = "splitleh"
 version = "0.1.0"
 description = "SplitLeh monorepo - Python workspace root"

@@ -48,7 +48,7 @@ function billAlreadyClosed(charges: ParsedCharge[]): boolean {
 
 function shouldInferTaxes(
   charges: ParsedCharge[],
-  items: ParsedItem[],
+  _items: ParsedItem[],
   rawText?: string | null,
 ): boolean {
   if (hasCharge(charges, 'service_charge')) return true

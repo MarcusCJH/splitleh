@@ -1,4 +1,4 @@
-﻿[project]
+[project]
 name = "splitleh-infra"
 version = "0.1.0"
 description = "SplitLeh Cloud - AWS CDK infrastructure"
